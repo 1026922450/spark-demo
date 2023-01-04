@@ -8,18 +8,37 @@ from datetime import date
 
 class DemoETL(ETL):
 
-    def extract(self, temp_view_name) -> str:
-        today = date.today()
-        return f"""
-        SELECT *, {today} as etl_date
-        FROM {temp_view_name}
-        """
+    def extract(self, data_key: str) -> str:
+        if data_key == "trade":
+            today = date.today()
+            return f"""
+              SELECT *, {today} as etl_date
+              FROM {data_key}
+              """
 
-    def transform(self, df: DataFrame) -> DataFrame:
-        df.printSchema()
-        df = df.withColumn("const_column", fn.lit(100))
-        df = df.withColumn("sum_column", df['IRATE_USD_SWP_UL3_01D'] + df['IRATE_USD_SWP_UL3_07D'])
-        df = df.withColumn("udf_column", DemoETL._compare_value(df['IRATE_USD_SWP_UL3_01D'], df['IRATE_USD_SWP_UL3_07D']))
+    def transform(self, data_key: str, df: DataFrame) -> DataFrame:
+        print(f"transform {data_key}")
+        if data_key == "trade":
+            df.printSchema()
+            df = df.withColumn("const_column", fn.lit(100))
+            df = df.withColumn("IRATE_USD_SWP_UL3_01D", df['IRATE_USD_SWP_UL3_01D'] + df['IRATE_USD_SWP_UL3_07D'])
+            df = df.withColumn("udf_column",
+                               DemoETL._compare_value(df['IRATE_USD_SWP_UL3_01M'], df['IRATE_USD_SWP_UL3_07D']))
+
+        return df
+
+    def combine(self, df_dict: dict) -> DataFrame:
+        print("begin combine")
+        df_trade = df_dict['trade']
+        df_market2 = df_dict['market2']
+        df_market3 = df_dict['market3']
+
+        df = self.merge(df_trade, df_market2, ["date"])
+        df = self.merge(df, df_market3, ["t_check"])
+
+        # other transform
+        df = df.withColumn("combine_done", df['IRATE_USD_SWP_UL3_01D'] * 100)
+
         return df
 
     def before_save(self, df: DataFrame) -> DataFrame:
@@ -40,13 +59,11 @@ def app(data_source, output_uri):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--data_source', help="The URI for you CSV restaurant data, like an S3 bucket location.")
-    parser.add_argument(
-        '--output_uri', help="The URI where output is saved, like an S3 bucket location.")
-    args = parser.parse_args()
-
-    print(args.data_source)
-    print(args.output_uri)
-    app(args.data_source, args.output_uri)
+    source_folder = "/Users/fugui/Work/project/bimaw/data/"
+    data_source = {
+        "trade": f"{source_folder}/trade.csv",
+        "market2": f"{source_folder}/market2.csv",
+        "market3": f"{source_folder}/market3.csv"
+    }
+    output_uri = "/Users/fugui/Work/project/bimaw/output/test.csv"
+    app(data_source, output_uri)
