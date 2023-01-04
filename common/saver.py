@@ -23,9 +23,9 @@ class Saver:
         if self.output_uri.endswith(".parquet"):
             fmt = "parquet"
             if self.partition_keys:
-                df.write.format(fmt).mode(save_mode).saveAsTable(self.output_uri, partitionBy=self.partition_keys)
+                df.write.mode(save_mode).parquet(self.output_uri, partitionBy=self.partition_keys)
             else:
-                df.write.format(fmt).mode(save_mode).saveAsTable(self.output_uri)
+                df.write.mode(save_mode).parquet(self.output_uri)
             return
 
         raise NotImplementedError("NOT Support output format")
