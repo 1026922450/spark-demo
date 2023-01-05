@@ -29,7 +29,9 @@ class DemoETL(ETL):
 
     def combine(self, df_dict: dict) -> DataFrame:
         print("begin combine")
-        df_trade = df_dict['trade']
+
+        df_trade = self.df_form('trade', df_dict)
+
         df_market2 = df_dict['market2']
         df_market3 = df_dict['market3']
 

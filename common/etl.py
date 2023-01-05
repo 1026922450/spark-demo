@@ -109,3 +109,6 @@ class ETL(Saver):
 
         df = df.cache()
         return df
+
+    def df_form(self, key: str, source: dict) -> DataFrame:
+        return source[key]
